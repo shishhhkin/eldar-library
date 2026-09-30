@@ -25,6 +25,11 @@ class SqlAlchemyMembershipRepository:
         model = await self.session.get(MembershipModel, membership_id)
         return None if model is None else to_domain(model)
 
+    async def get_by_user_id(self, user_id: UUID) -> Membership | None:
+        stmt = select(MembershipModel).where(MembershipModel.user_id == user_id)
+        model = (await self.session.execute(stmt)).scalar_one_or_none()
+        return None if model is None else to_domain(model)
+
     async def add(self, membership: Membership) -> bool:
         stmt = (
             pg_insert(MembershipModel)

@@ -50,6 +50,30 @@ async def test_read_membership_invalid_id(client: AsyncClient) -> None:
     assert response.status_code == 422
 
 
+async def test_list_memberships_by_user(client: AsyncClient) -> None:
+    created = (await client.post(URL, json={'user_id': str(uuid4())})).json()
+    await client.post(URL, json={'user_id': str(uuid4())})
+
+    response = await client.get(URL, params={'user_id': created['user_id']})
+
+    assert response.status_code == 200
+    assert response.json() == [created]
+
+
+async def test_list_memberships_by_user_without_membership(client: AsyncClient) -> None:
+    response = await client.get(URL, params={'user_id': str(uuid4())})
+
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+@pytest.mark.parametrize('params', [{}, {'user_id': 'not-a-uuid'}])
+async def test_list_memberships_invalid_user_id(client: AsyncClient, params: dict) -> None:
+    response = await client.get(URL, params=params)
+
+    assert response.status_code == 422
+
+
 @pytest.mark.parametrize(
     'payload',
     [{}, {'user_id': None}, {'user_id': 'not-a-uuid'}, {'user_id': 42}],

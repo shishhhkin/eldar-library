@@ -2,7 +2,11 @@ from uuid import UUID
 
 from fastapi import APIRouter, status
 
-from src.api.dependencies.memberships import GetMembershipDep, IssueMembershipDep
+from src.api.dependencies.memberships import (
+    FindMembershipByUserDep,
+    GetMembershipDep,
+    IssueMembershipDep,
+)
 from src.api.mappers import to_membership_read
 from src.api.schemas.errors import CREATE_RESPONSES, READ_RESPONSES
 from src.api.schemas.memberships import MembershipCreate, MembershipRead
@@ -25,3 +29,11 @@ async def issue_membership(
 @router.get('/{membership_id}', response_model=MembershipRead, responses=READ_RESPONSES)
 async def read_membership(membership_id: UUID, use_case: GetMembershipDep) -> MembershipRead:
     return to_membership_read(await use_case(membership_id))
+
+
+@router.get('', response_model=list[MembershipRead])
+async def list_memberships(
+    user_id: UUID, use_case: FindMembershipByUserDep
+) -> list[MembershipRead]:
+    membership = await use_case(user_id)
+    return [] if membership is None else [to_membership_read(membership)]

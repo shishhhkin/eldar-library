@@ -35,3 +35,12 @@ class GetMembership:
             logger.info('membership not found: %s', membership_id)
             raise MembershipNotFoundError(membership_id)
         return membership
+
+
+class FindMembershipByUser:
+    def __init__(self, uow: UnitOfWork) -> None:
+        self.uow = uow
+
+    async def __call__(self, user_id: UUID) -> Membership | None:
+        async with self.uow:
+            return await self.uow.memberships.get_by_user_id(user_id)
