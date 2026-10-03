@@ -30,7 +30,8 @@ class Membership:
     user_id: UUID
     number: CardNumber
     issued_at: datetime
+    version: int
 
     @classmethod
     def issue(cls, user_id: UUID, number: CardNumber, now: datetime) -> Membership:
-        return cls(id=uuid7(), user_id=user_id, number=number, issued_at=now)
+        return cls(id=uuid7(), user_id=user_id, number=number, issued_at=now, version=1)

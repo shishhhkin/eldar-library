@@ -14,6 +14,7 @@ def to_domain(model: MembershipModel) -> Membership:
         user_id=model.user_id,
         number=CardNumber(model.number),
         issued_at=model.issued_at,
+        version=model.version,
     )
 
 
@@ -38,6 +39,7 @@ class SqlAlchemyMembershipRepository:
                 user_id=membership.user_id,
                 number=membership.number.value,
                 issued_at=membership.issued_at,
+                version=membership.version,
             )
             .on_conflict_do_nothing(index_elements=[MembershipModel.user_id])
             .returning(MembershipModel.id)

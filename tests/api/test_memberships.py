@@ -15,10 +15,11 @@ async def test_issue_membership(client: AsyncClient) -> None:
 
     assert response.status_code == 201
     body = response.json()
-    assert set(body) == {'id', 'user_id', 'number', 'issued_at'}
+    assert set(body) == {'id', 'user_id', 'number', 'issued_at', 'version'}
     assert UUID(body['id']).version == 7
     assert body['user_id'] == str(user_id)
     assert body['number'] == 'LIB-00000001'
+    assert body['version'] == 1
     issued_at = datetime.fromisoformat(body['issued_at'])
     assert abs(datetime.now(UTC) - issued_at) < timedelta(seconds=10)
 
