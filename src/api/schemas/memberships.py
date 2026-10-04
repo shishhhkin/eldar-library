@@ -19,6 +19,7 @@ class MembershipRead(BaseModel):
     user_id: UUID
     number: str
     issued_at: datetime
+    version: int
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -28,6 +29,7 @@ class MembershipRead(BaseModel):
                     'user_id': _USER_ID_EXAMPLE,
                     'number': 'LIB-00000042',
                     'issued_at': '2026-09-28T12:00:00Z',
+                    'version': 1,
                 }
             ]
         },

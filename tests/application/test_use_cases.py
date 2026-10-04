@@ -3,7 +3,7 @@ from uuid import uuid4
 
 import pytest
 
-from src.application.use_cases import GetMembership, IssueMembership
+from src.application.use_cases import FindMembershipByUser, GetMembership, IssueMembership
 from src.domain.exceptions import MembershipAlreadyExistsError, MembershipNotFoundError
 from src.infrastructure.db.unit_of_work import SqlAlchemyUnitOfWork
 
@@ -43,3 +43,10 @@ async def test_get_missing_membership_raises_and_logs(
         await GetMembership(uow)(missing_id)
 
     assert f'membership not found: {missing_id}' in caplog.messages
+
+
+async def test_find_membership_by_user(uow: SqlAlchemyUnitOfWork) -> None:
+    issued = await IssueMembership(uow)(uuid4())
+
+    assert await FindMembershipByUser(uow)(issued.user_id) == issued
+    assert await FindMembershipByUser(uow)(uuid4()) is None
