@@ -85,17 +85,15 @@ async def test_issue_membership_invalid_body(client: AsyncClient, payload: dict)
     assert response.status_code == 422
 
 
-async def test_issue_membership_twice_for_same_user(client: AsyncClient) -> None:
+async def test_issue_membership_twice_returns_existing(client: AsyncClient) -> None:
     user_id = uuid4()
     first = (await client.post(URL, json={'user_id': str(user_id)})).json()
 
     response = await client.post(URL, json={'user_id': str(user_id)})
 
-    assert response.status_code == 409
-    body = response.json()
-    assert body['code'] == 'already_exists'
-    assert body['detail'] == f'User {user_id} already has a membership'
-    assert (await client.get(f'{URL}/{first["id"]}')).json() == first
+    assert response.status_code == 200
+    assert response.json() == first
+    assert (await client.get(URL, params={'user_id': str(user_id)})).json() == [first]
 
 
 async def test_concurrent_issue_for_same_user_creates_one(client: AsyncClient) -> None:
@@ -103,7 +101,8 @@ async def test_concurrent_issue_for_same_user_creates_one(client: AsyncClient) -
 
     responses = await asyncio.gather(*(client.post(URL, json=payload) for _ in range(5)))
 
-    assert sorted(r.status_code for r in responses) == [201, 409, 409, 409, 409]
+    assert sorted(r.status_code for r in responses) == [200, 200, 200, 200, 201]
+    assert len({r.json()['id'] for r in responses}) == 1
 
 
 async def test_numbers_are_unique_and_increasing(client: AsyncClient) -> None:

@@ -6,13 +6,12 @@ from fastapi.responses import JSONResponse
 
 from src.api.middleware import REQUEST_ID_HEADER
 from src.api.schemas.errors import ErrorResponse
-from src.domain.exceptions import DomainError, MembershipAlreadyExistsError, MembershipNotFoundError
+from src.domain.exceptions import DomainError, MembershipNotFoundError
 
 logger = logging.getLogger(__name__)
 
 DOMAIN_ERRORS: dict[type[DomainError], tuple[HTTPStatus, str]] = {
     MembershipNotFoundError: (HTTPStatus.NOT_FOUND, 'not_found'),
-    MembershipAlreadyExistsError: (HTTPStatus.CONFLICT, 'already_exists'),
 }
 
 
