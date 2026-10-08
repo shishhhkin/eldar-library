@@ -8,4 +8,5 @@ def to_membership_read(membership: Membership) -> MembershipRead:
         user_id=membership.user_id,
         number=membership.number.value,
         issued_at=membership.issued_at,
+        version=membership.version,
     )
