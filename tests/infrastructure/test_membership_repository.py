@@ -24,6 +24,17 @@ async def test_get_missing_returns_none(uow: SqlAlchemyUnitOfWork) -> None:
         assert await uow.memberships.get(uuid4()) is None
 
 
+async def test_get_by_user_id(uow: SqlAlchemyUnitOfWork) -> None:
+    membership = _membership()
+    async with uow:
+        assert await uow.memberships.add(membership)
+        await uow.commit()
+
+    async with uow:
+        assert await uow.memberships.get_by_user_id(membership.user_id) == membership
+        assert await uow.memberships.get_by_user_id(uuid4()) is None
+
+
 async def test_add_returns_false_for_same_user(uow: SqlAlchemyUnitOfWork) -> None:
     first = _membership(1)
     second = Membership.issue(first.user_id, CardNumber.from_sequence(2), datetime.now(UTC))

@@ -25,23 +25,6 @@ class NotFoundResponse(ErrorResponse):
     )
 
 
-class ConflictResponse(ErrorResponse):
-    model_config = ConfigDict(
-        json_schema_extra={
-            'examples': [
-                ErrorResponse(
-                    code='already_exists',
-                    detail='User 0199a1b2-7c3d-7e4f-8a5b-6c7d8e9f0a1b already has a membership',
-                    request_id=_REQUEST_ID_EXAMPLE,
-                ).model_dump(mode='json')
-            ]
-        }
-    )
-
-
-CREATE_RESPONSES: dict[int | str, dict[str, Any]] = {
-    409: {'model': ConflictResponse, 'description': 'User already has a membership'},
-}
 READ_RESPONSES: dict[int | str, dict[str, Any]] = {
     404: {'model': NotFoundResponse, 'description': 'Membership not found'},
 }

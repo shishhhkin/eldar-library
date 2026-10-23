@@ -14,6 +14,7 @@ def to_domain(model: MembershipModel) -> Membership:
         user_id=model.user_id,
         number=CardNumber(model.number),
         issued_at=model.issued_at,
+        version=model.version,
     )
 
 
@@ -25,6 +26,11 @@ class SqlAlchemyMembershipRepository:
         model = await self.session.get(MembershipModel, membership_id)
         return None if model is None else to_domain(model)
 
+    async def get_by_user_id(self, user_id: UUID) -> Membership | None:
+        stmt = select(MembershipModel).where(MembershipModel.user_id == user_id)
+        model = (await self.session.execute(stmt)).scalar_one_or_none()
+        return None if model is None else to_domain(model)
+
     async def add(self, membership: Membership) -> bool:
         stmt = (
             pg_insert(MembershipModel)
@@ -33,6 +39,7 @@ class SqlAlchemyMembershipRepository:
                 user_id=membership.user_id,
                 number=membership.number.value,
                 issued_at=membership.issued_at,
+                version=membership.version,
             )
             .on_conflict_do_nothing(index_elements=[MembershipModel.user_id])
             .returning(MembershipModel.id)

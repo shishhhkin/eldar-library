@@ -65,6 +65,7 @@ def test_issue_sets_fields() -> None:
     assert membership.user_id == user_id
     assert membership.number == number
     assert membership.issued_at == now
+    assert membership.version == 1
     assert membership.id.version == 7
 
 

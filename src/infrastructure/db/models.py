@@ -16,3 +16,4 @@ class MembershipModel(Base):
     user_id: Mapped[UUID] = mapped_column(sa.Uuid, nullable=False, unique=True)
     number: Mapped[str] = mapped_column(sa.String(12), nullable=False, unique=True)
     issued_at: Mapped[datetime] = mapped_column(sa.DateTime(timezone=True), nullable=False)
+    version: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text('1'))
