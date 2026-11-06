@@ -3,12 +3,16 @@ from typing import Self
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from src.domain.repositories import MembershipRepository
-from src.infrastructure.db.repositories import SqlAlchemyMembershipRepository
+from src.domain.repositories import BookReservationRepository, MembershipRepository
+from src.infrastructure.db.repositories import (
+    SqlAlchemyBookReservationRepository,
+    SqlAlchemyMembershipRepository,
+)
 
 
 class SqlAlchemyUnitOfWork:
     memberships: MembershipRepository
+    book_reservations: BookReservationRepository
     _session: AsyncSession
 
     def __init__(self, session_factory: async_sessionmaker[AsyncSession]) -> None:
@@ -17,6 +21,7 @@ class SqlAlchemyUnitOfWork:
     async def __aenter__(self) -> Self:
         self._session = self._session_factory()
         self.memberships = SqlAlchemyMembershipRepository(self._session)
+        self.book_reservations = SqlAlchemyBookReservationRepository(self._session)
         return self
 
     async def __aexit__(

@@ -7,6 +7,9 @@ sync:
 run:
     uv run python -m src.main
 
+subscriber:
+    uv run python -m src.subscriber
+
 test *args:
     uv run pytest {{args}}
 

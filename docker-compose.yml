@@ -24,3 +24,24 @@ services:
         condition: service_healthy
     ports:
       - "8001:8001"
+
+  subscriber:
+    build: .
+    env_file: .env
+    command: ["python", "-m", "src.subscriber"]
+    restart: unless-stopped
+    environment:
+      postgres_host: postgres
+      postgres_port: 5432
+      kafka_bootstrap_servers: host.docker.internal:29092
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      app:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-m", "src.subscriber", "healthcheck"]
+      interval: 30s
+      timeout: 10s
+      start_period: 10s
+      retries: 3

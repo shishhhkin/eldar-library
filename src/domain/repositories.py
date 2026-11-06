@@ -1,6 +1,7 @@
 from typing import Protocol
 from uuid import UUID
 
+from src.domain.book_reservation import BookReservation
 from src.domain.membership import CardNumber, Membership
 
 
@@ -12,3 +13,7 @@ class MembershipRepository(Protocol):
     async def add(self, membership: Membership) -> bool: ...
 
     async def next_card_number(self) -> CardNumber: ...
+
+
+class BookReservationRepository(Protocol):
+    async def add(self, reservation: BookReservation) -> bool: ...

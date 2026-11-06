@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from src.application.unit_of_work import UnitOfWork
+from src.domain.book_reservation import BookReservation
 from src.domain.exceptions import MembershipNotFoundError
 from src.domain.membership import Membership
 
@@ -47,3 +48,17 @@ class FindMembershipByUser:
     async def __call__(self, user_id: UUID) -> Membership | None:
         async with self.uow:
             return await self.uow.memberships.get_by_user_id(user_id)
+
+
+class RecordBookReservation:
+    def __init__(self, uow: UnitOfWork) -> None:
+        self.uow = uow
+
+    async def __call__(self, reservation: BookReservation) -> bool:
+        async with self.uow:
+            recorded = await self.uow.book_reservations.add(reservation)
+            if recorded:
+                await self.uow.commit()
+        if not recorded:
+            logger.info('book reservation already recorded: %s', reservation.id)
+        return recorded

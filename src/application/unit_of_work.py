@@ -1,11 +1,12 @@
 from types import TracebackType
 from typing import Protocol, Self
 
-from src.domain.repositories import MembershipRepository
+from src.domain.repositories import BookReservationRepository, MembershipRepository
 
 
 class UnitOfWork(Protocol):
     memberships: MembershipRepository
+    book_reservations: BookReservationRepository
 
     async def __aenter__(self) -> Self: ...
 
