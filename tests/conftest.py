@@ -33,6 +33,7 @@ RETRY_DELAY_SECONDS = 0.05
 KAFKA_SEND_TIMEOUT_SECONDS = 5.0
 KAFKA_READ_TIMEOUT_SECONDS = 10.0
 KAFKA_POLL_MS = 100
+LOCK_TIMEOUT = '50ms'
 
 
 def closed_port() -> int:
@@ -94,6 +95,31 @@ async def unreachable_client() -> AsyncIterator[AsyncClient]:
 async def unreachable_session_factory() -> AsyncIterator[async_sessionmaker[AsyncSession]]:
     engine = create_async_engine(
         f'postgresql+asyncpg://postgres:postgres@127.0.0.1:{closed_port()}/postgres'
+    )
+    yield async_sessionmaker(bind=engine, expire_on_commit=False)
+    await engine.dispose()
+
+
+@pytest.fixture
+async def missing_schema_session_factory(
+    postgres_container: PostgresContainer,
+) -> AsyncIterator[async_sessionmaker[AsyncSession]]:
+    engine = create_async_engine(
+        postgres_container.get_connection_url(),
+        connect_args={'server_settings': {'search_path': 'missing'}},
+    )
+    yield async_sessionmaker(bind=engine, expire_on_commit=False)
+    await engine.dispose()
+
+
+@pytest.fixture
+async def lock_timeout_session_factory(
+    postgres_container: PostgresContainer,
+    session_factory: async_sessionmaker[AsyncSession],
+) -> AsyncIterator[async_sessionmaker[AsyncSession]]:
+    engine = create_async_engine(
+        postgres_container.get_connection_url(),
+        connect_args={'server_settings': {'lock_timeout': LOCK_TIMEOUT}},
     )
     yield async_sessionmaker(bind=engine, expire_on_commit=False)
     await engine.dispose()

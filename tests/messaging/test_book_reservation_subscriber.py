@@ -7,8 +7,8 @@ from uuid import UUID, uuid4
 
 import pytest
 from aiokafka import AIOKafkaConsumer, AIOKafkaProducer, TopicPartition
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from sqlalchemy import select, text
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from src.application.use_cases import RecordBookReservation
 from src.domain.book_reservation import BookReservation
@@ -63,6 +63,14 @@ async def _poll_until_committed(
 ) -> None:
     async with asyncio.timeout(WAIT_TIMEOUT_SECONDS):
         while await _committed(subscriber, topic) != offset:
+            await subscriber.poll_once()
+
+
+async def _poll_until_deferred(
+    subscriber: BookReservationSubscriber, caplog: pytest.LogCaptureFixture, times: int
+) -> None:
+    async with asyncio.timeout(WAIT_TIMEOUT_SECONDS):
+        while sum('deferred' in text for text in caplog.messages) < times:
             await subscriber.poll_once()
 
 
@@ -227,9 +235,7 @@ async def test_database_failure_leaves_offset_uncommitted_until_message_is_recor
         async with started_subscriber(
             unreachable_session_factory, kafka_bootstrap, kafka_topic, kafka_group_id
         ) as subscriber:
-            async with asyncio.timeout(WAIT_TIMEOUT_SECONDS):
-                while sum('deferred' in text for text in caplog.messages) < 2:
-                    await subscriber.poll_once()
+            await _poll_until_deferred(subscriber, caplog, 2)
             assert await _committed(subscriber, kafka_topic) is None
 
     assert await _topic_size(kafka_bootstrap, dlq_topic(kafka_topic)) == 0
@@ -237,6 +243,57 @@ async def test_database_failure_leaves_offset_uncommitted_until_message_is_recor
         session_factory, kafka_bootstrap, kafka_topic, kafka_group_id
     ) as subscriber:
         await _poll_until_committed(subscriber, kafka_topic, 1)
+    assert list(await _reservations(session_factory)) == [UUID(message['id'])]
+
+
+async def test_sql_error_goes_to_dlq(
+    missing_schema_session_factory: async_sessionmaker[AsyncSession],
+    kafka_bootstrap: str,
+    kafka_topic: str,
+    kafka_group_id: str,
+    kafka_producer: AIOKafkaProducer,
+) -> None:
+    message = _encoded(_message())
+    await kafka_producer.send_and_wait(kafka_topic, message)
+
+    async with started_subscriber(
+        missing_schema_session_factory, kafka_bootstrap, kafka_topic, kafka_group_id
+    ) as subscriber:
+        await _poll_until_committed(subscriber, kafka_topic, 1)
+
+    [dead_letter] = await read_messages(kafka_bootstrap, dlq_topic(kafka_topic), 1)
+    assert dead_letter.value == message
+    assert dict(dead_letter.headers)['error.class'] == b'ProgrammingError'
+
+
+async def test_lock_timeout_leaves_offset_uncommitted_until_lock_is_released(
+    engine: AsyncEngine,
+    session_factory: async_sessionmaker[AsyncSession],
+    lock_timeout_session_factory: async_sessionmaker[AsyncSession],
+    kafka_bootstrap: str,
+    kafka_topic: str,
+    kafka_group_id: str,
+    kafka_producer: AIOKafkaProducer,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    message = _message()
+    await kafka_producer.send_and_wait(kafka_topic, _encoded(message))
+
+    with caplog.at_level(logging.WARNING, logger=SUBSCRIBER_LOGGER):
+        async with started_subscriber(
+            lock_timeout_session_factory, kafka_bootstrap, kafka_topic, kafka_group_id
+        ) as subscriber:
+            async with engine.connect() as locker, locker.begin():
+                await locker.execute(
+                    text(
+                        f'LOCK TABLE {BookReservationModel.__tablename__} IN ACCESS EXCLUSIVE MODE'
+                    )
+                )
+                await _poll_until_deferred(subscriber, caplog, 2)
+                assert await _committed(subscriber, kafka_topic) is None
+            await _poll_until_committed(subscriber, kafka_topic, 1)
+
+    assert await _topic_size(kafka_bootstrap, dlq_topic(kafka_topic)) == 0
     assert list(await _reservations(session_factory)) == [UUID(message['id'])]
 
 

@@ -44,5 +44,5 @@ select = ["E", "F", "I", "UP", "B", "SIM"]
 known-first-party = ["src"]
 
 [[tool.mypy.overrides]]
-module = ["aiokafka", "aiokafka.*"]
+module = ["aiokafka", "aiokafka.*", "asyncpg", "asyncpg.*"]
 ignore_missing_imports = true

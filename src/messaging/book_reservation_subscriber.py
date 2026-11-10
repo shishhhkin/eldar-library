@@ -6,7 +6,17 @@ from contextlib import suppress
 from aiokafka import AIOKafkaConsumer, TopicPartition
 from aiokafka.errors import CommitFailedError
 from aiokafka.structs import ConsumerRecord
-from sqlalchemy.exc import DBAPIError, SQLAlchemyError
+from asyncpg.exceptions import (
+    AdminShutdownError,
+    CannotConnectNowError,
+    CrashShutdownError,
+    DeadlockDetectedError,
+    LockNotAvailableError,
+    PostgresConnectionError,
+    SerializationError,
+    TooManyConnectionsError,
+)
+from sqlalchemy.exc import DBAPIError
 
 from src.application.use_cases import RecordBookReservation
 from src.messaging.dlq import DLQPublisher
@@ -15,18 +25,25 @@ from src.messaging.schemas import BookReservationEvent
 
 logger = logging.getLogger(__name__)
 
-DATA_ERROR_SQLSTATE_CLASSES = frozenset({'22', '23'})
+RETRYABLE_POSTGRES_ERRORS = (
+    PostgresConnectionError,
+    SerializationError,
+    DeadlockDetectedError,
+    TooManyConnectionsError,
+    LockNotAvailableError,
+    AdminShutdownError,
+    CrashShutdownError,
+    CannotConnectNowError,
+)
 
 
-def _is_data_error(exc: SQLAlchemyError) -> bool:
-    sqlstate = getattr(exc.orig, 'sqlstate', None) if isinstance(exc, DBAPIError) else None
-    return isinstance(sqlstate, str) and sqlstate[:2] in DATA_ERROR_SQLSTATE_CLASSES
-
-
-def _is_transient(exc: Exception) -> bool:
-    if isinstance(exc, SQLAlchemyError):
-        return not _is_data_error(exc)
-    return isinstance(exc, OSError)
+def is_retryable(exc: Exception) -> bool:
+    if isinstance(exc, OSError):
+        return True
+    if not isinstance(exc, DBAPIError):
+        return False
+    postgres_error = exc.orig.__cause__ if exc.orig is not None else None
+    return exc.connection_invalidated or isinstance(postgres_error, RETRYABLE_POSTGRES_ERRORS)
 
 
 class BookReservationSubscriber:
@@ -79,7 +96,7 @@ class BookReservationSubscriber:
             event = BookReservationEvent.model_validate_json(record.value)
             await self.record_reservation(to_book_reservation(event))
         except Exception as exc:
-            if _is_transient(exc):
+            if is_retryable(exc):
                 logger.warning(
                     'book reservation deferred: %s offset=%s (%r)', partition, record.offset, exc
                 )
