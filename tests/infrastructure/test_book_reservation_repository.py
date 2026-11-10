@@ -29,7 +29,6 @@ async def test_added_reservation_is_stored(
     reservation = _reservation()
     async with uow:
         assert await uow.book_reservations.add(reservation)
-        await uow.commit()
 
     assert await _stored(session_factory) == [reservation]
 
@@ -40,10 +39,8 @@ async def test_add_returns_false_for_same_id_and_keeps_first(
     first = _reservation()
     async with uow:
         assert await uow.book_reservations.add(first)
-        await uow.commit()
 
     async with uow:
         assert not await uow.book_reservations.add(replace(first, title='Белая гвардия'))
-        await uow.commit()
 
     assert await _stored(session_factory) == [first]

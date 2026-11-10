@@ -19,7 +19,6 @@ class IssueMembership:
             number = await self.uow.memberships.next_card_number()
             membership = Membership.issue(user_id, number, datetime.now(UTC))
             if await self.uow.memberships.add(membership):
-                await self.uow.commit()
                 return membership, True
             existing = await self.uow.memberships.get_by_user_id(user_id)
         if existing is None:
@@ -57,8 +56,6 @@ class RecordBookReservation:
     async def __call__(self, reservation: BookReservation) -> bool:
         async with self.uow:
             recorded = await self.uow.book_reservations.add(reservation)
-            if recorded:
-                await self.uow.commit()
         if not recorded:
             logger.info('book reservation already recorded: %s', reservation.id)
         return recorded

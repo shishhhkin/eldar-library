@@ -30,7 +30,10 @@ class SqlAlchemyUnitOfWork:
         exc: BaseException | None,
         tb: TracebackType | None,
     ) -> None:
-        await self._session.close()
-
-    async def commit(self) -> None:
-        await self._session.commit()
+        try:
+            if exc_type is None:
+                await self._session.commit()
+            else:
+                await self._session.rollback()
+        finally:
+            await self._session.close()
