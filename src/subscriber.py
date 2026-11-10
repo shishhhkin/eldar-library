@@ -54,8 +54,7 @@ async def serve() -> None:
     finally:
         try:
             async with asyncio.timeout(settings.kafka_send_timeout_seconds):
-                await consumer.stop()
-                await dlq_producer.stop()
+                await asyncio.gather(consumer.stop(), dlq_producer.stop())
         except TimeoutError:
             logger.warning('kafka clients stop timed out')
         await engine.dispose()
