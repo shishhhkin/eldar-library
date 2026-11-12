@@ -1,6 +1,8 @@
 from datetime import UTC, datetime
 from uuid import uuid4
 
+import pytest
+
 from src.domain.membership import CardNumber, Membership
 from src.infrastructure.db.unit_of_work import SqlAlchemyUnitOfWork
 
@@ -13,7 +15,6 @@ async def test_saved_membership_reads_back_equal(uow: SqlAlchemyUnitOfWork) -> N
     membership = _membership()
     async with uow:
         assert await uow.memberships.add(membership)
-        await uow.commit()
 
     async with uow:
         assert await uow.memberships.get(membership.id) == membership
@@ -28,7 +29,6 @@ async def test_get_by_user_id(uow: SqlAlchemyUnitOfWork) -> None:
     membership = _membership()
     async with uow:
         assert await uow.memberships.add(membership)
-        await uow.commit()
 
     async with uow:
         assert await uow.memberships.get_by_user_id(membership.user_id) == membership
@@ -40,11 +40,9 @@ async def test_add_returns_false_for_same_user(uow: SqlAlchemyUnitOfWork) -> Non
     second = Membership.issue(first.user_id, CardNumber.from_sequence(2), datetime.now(UTC))
     async with uow:
         assert await uow.memberships.add(first)
-        await uow.commit()
 
     async with uow:
         assert not await uow.memberships.add(second)
-        await uow.commit()
 
     async with uow:
         assert await uow.memberships.get(first.id) == first
@@ -60,10 +58,12 @@ async def test_next_card_number_increments(uow: SqlAlchemyUnitOfWork) -> None:
     assert second == CardNumber('LIB-00000002')
 
 
-async def test_exit_without_commit_rolls_back(uow: SqlAlchemyUnitOfWork) -> None:
+async def test_exception_in_block_rolls_back(uow: SqlAlchemyUnitOfWork) -> None:
     membership = _membership()
-    async with uow:
-        assert await uow.memberships.add(membership)
+    with pytest.raises(RuntimeError):
+        async with uow:
+            assert await uow.memberships.add(membership)
+            raise RuntimeError
 
     async with uow:
         assert await uow.memberships.get(membership.id) is None

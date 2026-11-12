@@ -17,3 +17,12 @@ class MembershipModel(Base):
     number: Mapped[str] = mapped_column(sa.String(12), nullable=False, unique=True)
     issued_at: Mapped[datetime] = mapped_column(sa.DateTime(timezone=True), nullable=False)
     version: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text('1'))
+
+
+class BookReservationModel(Base):
+    __tablename__ = 'book_reservations'
+
+    id: Mapped[UUID] = mapped_column(sa.Uuid, primary_key=True)
+    title: Mapped[str] = mapped_column(sa.String(255), nullable=False)
+    author: Mapped[str] = mapped_column(sa.String(128), nullable=False)
+    reserved_at: Mapped[datetime] = mapped_column(sa.DateTime(timezone=True), nullable=False)

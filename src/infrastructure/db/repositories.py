@@ -4,8 +4,13 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.domain.book_reservation import BookReservation
 from src.domain.membership import CardNumber, Membership
-from src.infrastructure.db.models import MembershipModel, membership_number_seq
+from src.infrastructure.db.models import (
+    BookReservationModel,
+    MembershipModel,
+    membership_number_seq,
+)
 
 
 def to_domain(model: MembershipModel) -> Membership:
@@ -51,3 +56,22 @@ class SqlAlchemyMembershipRepository:
             await self.session.execute(select(membership_number_seq.next_value()))
         ).scalar_one()
         return CardNumber.from_sequence(value)
+
+
+class SqlAlchemyBookReservationRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def add(self, reservation: BookReservation) -> bool:
+        stmt = (
+            pg_insert(BookReservationModel)
+            .values(
+                id=reservation.id,
+                title=reservation.title,
+                author=reservation.author,
+                reserved_at=reservation.reserved_at,
+            )
+            .on_conflict_do_nothing(index_elements=[BookReservationModel.id])
+            .returning(BookReservationModel.id)
+        )
+        return (await self.session.execute(stmt)).scalar_one_or_none() is not None
